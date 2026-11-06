@@ -1,8 +1,10 @@
+import ssl
 import time
 from dataclasses import dataclass
 from datetime import datetime
 
 import httpx
+import truststore
 
 API_URL = "https://api.anthropic.com/api/oauth/usage"
 API_HEADERS = {
@@ -10,12 +12,12 @@ API_HEADERS = {
     "User-Agent": "claude-code/2.1.226",
 }
 
-_client = httpx.Client(timeout=20.0)
+_client = httpx.Client(timeout=20.0, verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT))
 
 
 @dataclass
 class UsageData:
-    session_pct: int
+    session_pct: int | None
     session_reset_minutes: int | None
     weekly_pct: int
     weekly_reset_minutes: int | None
@@ -79,10 +81,10 @@ def fetch_usage(token: str, client: httpx.Client | None = None) -> UsageData | U
 
     session = _window(payload, "five_hour")
     weekly = _window(payload, "seven_day")
-    if session is None or weekly is None:
+    if weekly is None:
         return UsageError(kind="no_data", detail="no usage values")
 
-    session_pct, session_reset = session
+    session_pct, session_reset = session if session is not None else (None, None)
     weekly_pct, weekly_reset = weekly
     return UsageData(
         session_pct=session_pct,
