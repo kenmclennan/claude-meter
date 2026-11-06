@@ -30,16 +30,19 @@ The nudge is a real (if tiny) inference call, so it does draw on your subscripti
 bash install.sh
 ```
 
-Registers a launchd agent that starts automatically on login. Logs are written to `/tmp/claude-meter.log`.
+Registers a launchd agent that starts automatically on login and restarts the app whenever it exits, including after **Quit**. Logs are written to `/tmp/claude-meter.log`.
 
 ### Stop / Start manually
 
-Quit from the menu bar icon to stop the app. It will not auto-restart until you log in again.
+Because launchd restarts the app, **Quit** from the menu bar only stops it for a few seconds. To stop it until the next login:
+
+```sh
+launchctl unload ~/Library/LaunchAgents/com.github.aki77.claude-meter.plist
+```
 
 To start it again without rebooting:
 
 ```sh
-launchctl unload ~/Library/LaunchAgents/com.github.aki77.claude-meter.plist
 launchctl load ~/Library/LaunchAgents/com.github.aki77.claude-meter.plist
 ```
 
