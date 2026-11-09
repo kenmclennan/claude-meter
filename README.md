@@ -30,7 +30,13 @@ The nudge is a real (if tiny) inference call, so it does draw on your subscripti
 bash install.sh
 ```
 
-Registers a launchd agent that starts automatically on login and restarts the app whenever it exits, including after **Quit**. Logs are written to `/tmp/claude-meter.log`.
+Builds `~/Applications/Claude Meter.app` and registers a launchd agent that starts it on login and restarts it whenever it exits, including after **Quit**. Logs are written to `/tmp/claude-meter.log`.
+
+The app bundle holds no copy of the code. Its executable is a symlink to the real Python interpreter and its launcher points that interpreter at this checkout's `.venv`, so macOS attributes the process to **Claude Meter** (name, icon, notifications) instead of to Python.app, while `uv sync` keeps updating what actually runs. Re-run `install.sh` after moving the checkout or upgrading Python.
+
+### Dock icon
+
+**Show in Dock** in the menu toggles whether the app has a Dock tile and appears in Cmd-Tab. It is on by default; turning it off makes the app menu-bar only. The choice is stored in `~/Library/Application Support/claude-meter/settings.json`.
 
 ### Stop / Start manually
 
@@ -58,6 +64,8 @@ bash uninstall.sh
 uv run claude-meter
 ```
 
+Run this way the process belongs to Python.app rather than to the bundle, so the Dock still labels it "Python" (with the right icon). Use `open ~/Applications/Claude\ Meter.app` after installing to get the full identity without launchd.
+
 ## Menu
 
 The menu bar shows `Claude: N%` (5-hour session usage). Click to see details:
@@ -68,6 +76,10 @@ The menu bar shows `Claude: N%` (5-hour session usage). Click to see details:
   Projected: 63%  (day 1 of 7)
 
 Refresh
+Re-authenticate
+
+✓ Show in Dock
+
 Quit
 ```
 

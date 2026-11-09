@@ -6,7 +6,7 @@
     <string>com.github.aki77.claude-meter</string>
     <key>ProgramArguments</key>
     <array>
-        <string>CLAUDE_METER_VENV/claude-meter</string>
+        <string>CLAUDE_METER_APP/Contents/MacOS/claude-meter</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
