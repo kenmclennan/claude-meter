@@ -7,12 +7,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import rumps
+from AppKit import (
+    NSApplication,
+    NSApplicationActivationPolicyAccessory,
+    NSApplicationActivationPolicyRegular,
+    NSImage,
+)
 
 from .auth import Credentials, get_credentials
+from .settings import Settings
 from .usage import UsageData, UsageError, fetch_usage
 
 POLL_INTERVAL = 180
 ICON_PATH = "/Applications/Claude.app/Contents/Resources/TrayIconTemplate.png"
+APP_ICON_PATH = Path(__file__).parent / "resources" / "AppIcon.icns"
 ALERT_THRESHOLDS = (50, 75, 90)
 ALERT_MARK = "⚠️"
 WEEKLY_WINDOW_MIN = 7 * 24 * 60
@@ -133,8 +141,9 @@ class _Series:
 
 
 class ClaudeMeterApp(rumps.App):
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         super().__init__("Claude Meter", title="...", icon=ICON_PATH, template=True, quit_button=None)
+        self._settings = settings if settings is not None else Settings.load()
         self._error: UsageError | None = None
         self._data: UsageData | None = None
         self._stale = False
@@ -150,6 +159,8 @@ class ClaudeMeterApp(rumps.App):
         self._status_item = rumps.MenuItem("")
         self._refresh_item = rumps.MenuItem("Refresh", callback=self._on_refresh)
         self._reauth_item = rumps.MenuItem("Re-authenticate", callback=self._on_reauthenticate)
+        self._dock_item = rumps.MenuItem("Show in Dock", callback=self._on_toggle_dock)
+        self._dock_item.state = int(self._settings.show_in_dock)
         self._quit_item = rumps.MenuItem("Quit", callback=rumps.quit_application)
 
         self.menu = [
@@ -160,6 +171,8 @@ class ClaudeMeterApp(rumps.App):
             None,
             self._refresh_item,
             self._reauth_item,
+            None,
+            self._dock_item,
             None,
             self._quit_item,
         ]
@@ -380,9 +393,29 @@ class ClaudeMeterApp(rumps.App):
         self._notify(title="Re-authentication failed", subtitle=subtitle)
         return False
 
+    def _on_toggle_dock(self, item: rumps.MenuItem) -> None:
+        self._settings.show_in_dock = not self._settings.show_in_dock
+        item.state = int(self._settings.show_in_dock)
+        _apply_dock_visibility(self._settings.show_in_dock)
+        try:
+            self._settings.save()
+        except OSError as exc:
+            _log(f"could not save settings: {exc}")
+
     def run(self) -> None:
+        nsapp = NSApplication.sharedApplication()
+        # Inside Claude Meter.app the icon comes from Info.plist; this covers `uv run`.
+        if APP_ICON_PATH.exists():
+            nsapp.setApplicationIconImage_(NSImage.alloc().initWithContentsOfFile_(str(APP_ICON_PATH)))
+        _apply_dock_visibility(self._settings.show_in_dock)
         self._start_fetch()
         super().run()
+
+
+def _apply_dock_visibility(show: bool) -> None:
+    """Regular apps get a Dock tile and a Cmd-Tab entry; accessory apps get neither."""
+    policy = NSApplicationActivationPolicyRegular if show else NSApplicationActivationPolicyAccessory
+    NSApplication.sharedApplication().setActivationPolicy_(policy)
 
 
 def main() -> None:
